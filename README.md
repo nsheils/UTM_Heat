@@ -25,7 +25,7 @@ u0    = @(x) zeros(size(x));       % Initial condition
 beta  = [1,0,.5,1,0,1.];           % Boundary conditions
 %tspan = [0.001,0.01,0.1,0.2,1.0]; % Times at which to compute solution
 tspan = [1,2, 4, 8];
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect',options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
 ```
 
 In this case we can find the exact solution as well
@@ -61,6 +61,100 @@ set(gca,'FontSize',14,'Layer','top')
 ```
 
 <figure><img src="https://github.com/nsheils/UTM_Heat/ExA.pdf"></figure>
+
+### Example B
+```
+n     = 4-1;                      % Number of interfaces
+sigma = sqrt([.2, .01, .1, 1.]);  % Diffusivities 
+xj = linspace(0,1,n+2);
+xj = xj(2:n+2);                   % Location of interfaces
+u0    = @(x) ones(size(x));       % Initial condition
+beta  = [1, 0, .2, .4, 1, .1];    % Boundary conditions
+tspan = [.02,0.1,0.5,1,2,10];     % Times at which to compute solution
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
+```
+
+We plot the solution using
+figure;
+for i = 1:n+1,
+plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+hold on
+end
+for j=1:length(tspan)
+plot(xf,u(:,j),'m-','LineWidth',2.0)
+end
+xlabel('$x$','Interpreter','LaTeX','FontSize',20)
+ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
+set(gca,'FontSize',14,'Layer','top')
+```
+
+<figure><img src="https://github.com/nsheils/UTM_Heat/ExB.pdf"></figure>
+
+
+### Example C
+```
+n     = 10-1;                      % Number of interfaces
+sigma = ones(n+1,1);               % Diffusivities 
+j=1;
+while 2*j<=n+1
+sigma(2*j)=sqrt(.1);
+j=j+1;
+end
+xj    = linspace(0,1,n+2);
+xj    = xj(2:n+2);                % Location of interfaces
+u0    = @(x) zeros(size(x));      % Initial condition
+beta  = [1, 0, 1, 1,0, 0];        % Boundary conditions
+tspan = [0.0005, .01, .2, 1.];    % Times at which to compute solution
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
+
+figure;
+for i = 1:n+1,
+plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+hold on
+end
+for j=1:length(tspan)
+plot(xf,u(:,j),'m-','LineWidth',2.0)
+end
+axis([0,1,0,2])
+xlabel('$x$','Interpreter','LaTeX','FontSize',20)
+ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
+set(gca,'FontSize',14,'Layer','top')
+```
+
+<figure><img src="https://github.com/nsheils/UTM_Heat/ExC.pdf"></figure>
+
+### Example D
+```
+n     = 10-1;                      % Number of interfaces
+sigma = ones(n+1,1);               % Diffusivities 
+j=1;
+while 2*j<=n+1
+sigma(2*j)=sqrt(.1);
+j=j+1;
+end
+xj    = linspace(0,1,n+2);
+xj    = xj(2:n+2);                % Location of interfaces
+u0    = @(x) zeros(size(x));       % Initial condition
+beta  = [1, 0, 1, 0,1, 0];        % Boundary conditions
+tspan = [0.007, 2., 10.];         % Times at which to compute solution
+H     = .5*ones(1,n);             % Contact coefficients
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Imperfect', H);
+
+figure;
+for i = 1:n+1,
+plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+hold on
+end
+for j=1:length(tspan)
+plot(xf,u(:,j),'m-','LineWidth',2.0)
+end
+axis([0,1,-.1,4])
+xlabel('$x$','Interpreter','LaTeX','FontSize',20)
+ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
+set(gca,'FontSize',14,'Layer','top')
+```
+
+<figure><img src="https://github.com/nsheils/UTM_Heat/ExD.pdf"></figure>
 
 
 ## License
