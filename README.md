@@ -35,25 +35,26 @@ f1=beta(3)/beta(1); f2= beta(6)/beta(4);
 nspace=1:1000;
 ue=cell(length(tspan),1);
 for tau=1:length(tspan)
-ue{tau}= @(x) f1*(1-x)+f2*x+sum(2./(nspace.*pi).*(f2*(-1).^(nspace+1)-f1).*exp(-nspace.^2.*pi^2.*tspan(tau)).*sin(nspace.*pi.*x));
+    ue{tau}= @(x) f1*(1-x)+f2*x+sum(2./(nspace.*pi).*(f2*(-1).^(nspace+1)-f1).*exp(-nspace.^2.*pi^2.*tspan(tau)).*sin(nspace.*pi.*x));
 end
 uexact=zeros(length(xf),length(tspan));
 for j=1:length(tspan)
-for y=1:length(xf)
-uexact(y,j)=ue{j}(xf(y));
-end
+    for y=1:length(xf)
+        uexact(y,j)=ue{j}(xf(y));
+    end
 end
 ```
 
 We plot the solution using
+```
 figure;
 for i = 1:n+1,
-plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9], 'LineWidth',1.)
+    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9], 'LineWidth',1.)
 hold on
 end
 for j=1:length(tspan)
-plot(xf,u(:,j),'m--','LineWidth',2.0)
-plot(xf,uexact(:,j),'b-','LineWidth',2.0)
+    plot(xf,u(:,j),'m--','LineWidth',2.0)
+    plot(xf,uexact(:,j),'b-','LineWidth',2.0)
 end
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
@@ -77,11 +78,11 @@ tspan = [.02,0.1,0.5,1,2,10];     % Times at which to compute solution
 We plot the solution using
 figure;
 for i = 1:n+1,
-plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
-hold on
+    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+    hold on
 end
 for j=1:length(tspan)
-plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'m-','LineWidth',2.0)
 end
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
@@ -97,8 +98,8 @@ n     = 10-1;                      % Number of interfaces
 sigma = ones(n+1,1);               % Diffusivities 
 j=1;
 while 2*j<=n+1
-sigma(2*j)=sqrt(.1);
-j=j+1;
+    sigma(2*j)=sqrt(.1);
+    j=j+1;
 end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
@@ -109,11 +110,11 @@ tspan = [0.0005, .01, .2, 1.];    % Times at which to compute solution
 
 figure;
 for i = 1:n+1,
-plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
-hold on
+    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+    hold on
 end
 for j=1:length(tspan)
-plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'m-','LineWidth',2.0)
 end
 axis([0,1,0,2])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
@@ -129,8 +130,8 @@ n     = 10-1;                      % Number of interfaces
 sigma = ones(n+1,1);               % Diffusivities 
 j=1;
 while 2*j<=n+1
-sigma(2*j)=sqrt(.1);
-j=j+1;
+    sigma(2*j)=sqrt(.1);
+    j=j+1;
 end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
@@ -142,11 +143,11 @@ H     = .5*ones(1,n);             % Contact coefficients
 
 figure;
 for i = 1:n+1,
-plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
-hold on
+    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+    hold on
 end
 for j=1:length(tspan)
-plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'m-','LineWidth',2.0)
 end
 axis([0,1,-.1,4])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
