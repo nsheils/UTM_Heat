@@ -16,13 +16,15 @@ end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
 u0    = @(x) zeros(size(x));      % Initial condition
-beta  = [1, 0, 1, 1,0, 0];        % Boundary conditions
+beta  = [1, 0, 1,0];              % Boundary conditions
+f1  = @(t) 1;                     % RHS Boundary condition 1
+f2  = @(t) 0;                     % RHS Boundary condition 2
 tspan = [0.0005, .01, .2, 1.];    % Times at which to compute solution
 options.NX    = 15;               % Number of places to evaluate solution
 options.NN    = 20;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 tic
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect', options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1, f2, tspan,'Perfect', options);
 toc
 
 % Plot
@@ -35,9 +37,6 @@ for j=1:length(tspan)
     plot(xf,u(:,j),'m-','LineWidth',2.0)
 end
 axis([0,1,0,2])
-xlabel('$x$','Interpreter','LaTeX','FontSize',20)
-ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
-set(gca,'FontSize',14,'Layer','top')
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')

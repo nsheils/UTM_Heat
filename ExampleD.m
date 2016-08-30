@@ -15,15 +15,17 @@ while 2*j<=n+1
 end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
-u0    = @(x) zeros(size(x));       % Initial condition
-beta  = [1, 0, 1, 0,1, 0];        % Boundary conditions
+u0    = @(x) zeros(size(x));      % Initial condition
+beta  = [1, 0, 0,1];              % Boundary conditions
+f1  = @(t) 1;                     % RHS Boundary condition 1
+f2  = @(t) 0;                     % RHS Boundary condition 2
 tspan = [0.007, 2., 10.];         % Times at which to compute solution
 H     = .5*ones(1,n);             % Contact coefficients
 options.NX    = 15;               % Number of places to evaluate solution
 options.NN    = 20;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 tic
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Imperfect',H, options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,'Imperfect',H, options);
 toc
 
 % Plot

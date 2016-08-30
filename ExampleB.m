@@ -10,13 +10,15 @@ sigma = sqrt([.2, .01, .1, 1.]);  % Diffusivities
 xj = linspace(0,1,n+2);
 xj = xj(2:n+2);                   % Location of interfaces
 u0    = @(x) ones(size(x));       % Initial condition
-beta  = [1, 0, .2, .4, 1, .1];    % Boundary conditions
+beta  = [1, 0, .4, 1];            % Boundary conditions
+f1  = @(t) .2;                    % RHS Boundary condition 1
+f2  = @(t) .1;                    % RHS Boundary condition 2
 tspan = [.02,0.1,0.5,1,2,10];     % Times at which to compute solution
 options.NX    = 15;               % Number of places to evaluate solution
 options.NN    = 20;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 tic
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect',options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1, f2, tspan,'Perfect',options);
 toc
 
 % Plot
@@ -32,10 +34,7 @@ end
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
-xlabel('$x$','Interpreter','LaTeX','FontSize',20)
-ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
-set(gca,'FontSize',14,'Layer','top')
-saveas(gcf,['ExB.pdf'])
+saveas(gcf,'ExB.pdf')
 
 for j=1:length(tspan)
     figure

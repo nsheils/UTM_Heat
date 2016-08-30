@@ -1,4 +1,4 @@
-function [u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,interface,varargin)
+function [u,xf]=UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,interface,varargin)
 % UTM_Heat Solves the one-dimensional multilayer diffusion problem using
 %                 the Unified Transform Method (UTM).
 %
@@ -59,9 +59,12 @@ function [u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,interface,varargin)
 %               return a vector result uint. Use array operators .*, ./ and
 %               .^ in the definition of u0 so that it can be evaluated with
 %               a vector argument.
-%   beta        A vector of six values specifying the boudary conditons
-%               beta=(beta1,beta2,f1,beta3,beta4,f2) FOR NOW, f1 and f2
-%               must be constants
+%   beta        A vector of four values specifying the boudary conditons
+%               beta=(beta1,beta2,beta3,beta4) 
+%   f1          A function handle specifying the RHS of the boundary
+%               condition.
+%   f2          A function handle specifying the RHS of the boundary
+%               condition.
 %   tspan       A vector specifying the times at which a solution is
 %               requested. To obtain solutions at specific times
 %               t0,t1,...,tf, use TSPAN = [t0,t1,...,tf].
@@ -95,26 +98,26 @@ function [u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,interface,varargin)
 %   -----------------------------------------------------------------------
 %   u0 = @(x) zeros(size(x));
 %   [u,x] = UTM_Heat(2,[1,0.1,1],[0.3,0.7, 1.0],u0,[1,0,0,1,1,.5],
-%           [0.02,0.05,0.1,0.2,0.5,1.0],'Perfect');
+%           [0.02,0.05,0.2,0.5], @(t) .1, @(t) 1.,'Perfect');
 %
 % -------------------------------------------------------------------------
 % Check inputs
 % -------------------------------------------------------------------------
-if nargin < 7
+if nargin < 9
     error('Not enough input arguments.');
-elseif nargin == 7
+elseif nargin == 9
     if strcmp(interface,'Imperfect')
         error('H must be specified for imperfect contact at interfaces.');
     end
     options = struct;
-elseif nargin == 8
+elseif nargin == 10
     if strcmp(interface,'Perfect')
         options = varargin{1};
     elseif strcmp(interface,'Imperfect')
         H = varargin{1};
         options = struct;
     end
-elseif nargin == 9
+elseif nargin == 11
     if strcmp(interface,'Perfect')
         error('Too many input arguments for interface = ''Perfect''.');
     elseif strcmp(interface,'Imperfect')
@@ -149,8 +152,14 @@ if ~isa(u0,'function_handle') || nargin(u0) ~= 1
 end
 
 % Boundary conditions
-if length(beta) ~= 6
-    error('beta must be a vector of length 6')
+if length(beta) ~= 4
+    error('beta must be a vector of length 4')
+end
+if ~isa(f1,'function_handle') || nargin(f1) ~= 1
+    error('f1 must be a function handle of the form f1 = f1(t).');
+end
+if ~isa(f2,'function_handle') || nargin(f2) ~= 1
+    error('f2 must be a function handle of the form f2 = f2(t).');
 end
 
 % Time vector
@@ -183,7 +192,7 @@ if isfield(options,'NX')
         error('options.NX must be an integer greater than or equal to 1.')
     end
 else
-    NX = 50; % Default
+    NX = 15; % Default
 end
 % Range to use in integration
 if isfield(options,'NN')
@@ -207,11 +216,8 @@ end
 % Get boundary condition constants
 beta1    = beta(1);
 beta2    = beta(2);
-f1       = beta(3);
-beta3    = beta(4);
-beta4    = beta(5);
-f2       = beta(6);
-%FOR NOW f1 AND f2 cannot be functions.  NEED TO CHANGE THIS
+beta3    = beta(3);
+beta4    = beta(4);
 
 % Check boundary conditions are implemented correctly
 if beta1 == 0 && beta2 == 0
@@ -319,9 +325,9 @@ if strcmp(interface,'Imperfect')
     for tau=1:length(tspan)
         s=linspace(0,tspan(tau));
         % FOURIER TRANSFORM OF Condition on right
-        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1);
+        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
         % FOURIER TRANSFORM OF Condition on left
-        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2);
+        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2(s));
         for j=1:n+1
             Y{j+1,tau}=@(nu) arrayfun(@(j) -u0hat{j}(nu./sigma(j)),j);
             Y{n+2+j,tau}=@(nu) arrayfun(@(j) -u0hat{j}(-nu./sigma(j)),j);
@@ -461,9 +467,9 @@ elseif strcmp(interface,'Perfect')
     for tau=1:length(tspan)
         s=linspace(0,tspan(tau),100*Ny*tspan(tau));
         % FOURIER TRANSFORM OF Condition on right
-        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1);
+        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
         % FOURIER TRANSFORM OF Condition on left
-        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2);
+        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2(s));
         for j=1:n+1
             Y{j+1,tau}=@(nu) arrayfun(@(j) -u0hat{j}(nu./sigma(j)),j);
             Y{n+2+j,tau}=@(nu) arrayfun(@(j) -u0hat{j}(-nu./sigma(j)),j);
