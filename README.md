@@ -61,7 +61,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExA.pdf"></figure>
+<figure><img src="UTM_Heat/ExA.png"></figure>
 
 ### Example B
 ```
@@ -90,7 +90,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExB.pdf"></figure>
+<figure><img src="UTM_Heat/ExB.png"></figure>
 
 
 ### Example C
@@ -123,7 +123,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExC.pdf"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExC.png"></figure>
 
 ### Example D
 ```
@@ -156,7 +156,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExD.pdf"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExD.png"></figure>
 
 
 ## License
