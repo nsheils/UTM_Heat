@@ -61,7 +61,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExA.png"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExA.png"></figure>
 
 ### Example B
 ```
@@ -90,7 +90,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExB.png"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExB.png"></figure>
 
 
 ### Example C
