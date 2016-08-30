@@ -156,7 +156,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="UTM_Heat/ExD.pdf"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExD.pdf"></figure>
 
 
 ## License
