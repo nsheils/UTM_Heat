@@ -61,7 +61,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/ExA.pdf"></figure>
+<figure><img src="UTM_Heat/ExA.pdf"></figure>
 
 ### Example B
 ```
@@ -76,6 +76,7 @@ tspan = [.02,0.1,0.5,1,2,10];     % Times at which to compute solution
 ```
 
 We plot the solution using
+```
 figure;
 for i = 1:n+1,
     plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
@@ -89,7 +90,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/ExB.pdf"></figure>
+<figure><img src="UTM_Heat/ExB.pdf"></figure>
 
 
 ### Example C
@@ -122,7 +123,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/ExC.pdf"></figure>
+<figure><img src="UTM_Heat/ExC.pdf"></figure>
 
 ### Example D
 ```
@@ -155,7 +156,7 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/ExD.pdf"></figure>
+<figure><img src="UTM_Heat/ExD.pdf"></figure>
 
 
 ## License
