@@ -21,21 +21,28 @@ http://dx.doi.org/10.1016/j.apm.2016.02.041
 n     = 2;                         % Number of layers
 sigma = [1,1,1];                   % Diffusivities 
 xj    = [1/3,2/3,1];               % Location of interfaces
-u0    = @(x) zeros(size(x));       % Initial condition
-beta  = [1,0,.5,1,0,1.];           % Boundary conditions
-%tspan = [0.001,0.01,0.1,0.2,1.0]; % Times at which to compute solution
-tspan = [1,2, 4, 8];
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
+u0    = @(x) x.^3;                 % Initial condition
+beta  = [1,0,1,0];                 % Boundary conditions
+f1  = @(t) 0;                      % RHS Boundary condition 1
+f2  = @(t) 1.;                     % RHS Boundary condition 2
+tspan = [.01,.1,1];                % Times at which to compute solution
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,'Perfect';
 ```
 
 In this case we can find the exact solution as well
 
 ```
-f1=beta(3)/beta(1); f2= beta(6)/beta(4);
+clear f1; clear f2;
+f1=0; f2= 1.;
 nspace=1:1000;
 ue=cell(length(tspan),1);
+c=zeros(1,length(nspace));
+intx=linspace(0,1,200);
+for j=1:length(nspace)
+    c(1,j)=2*trapz(intx,(u0(intx)-f1.*(1-intx)-f2.*intx).*sin(j*pi*intx));
+end
 for tau=1:length(tspan)
-    ue{tau}= @(x) f1*(1-x)+f2*x+sum(2./(nspace.*pi).*(f2*(-1).^(nspace+1)-f1).*exp(-nspace.^2.*pi^2.*tspan(tau)).*sin(nspace.*pi.*x));
+    ue{tau}= @(x) f1*(1-x)+f2*x+sum(exp(-nspace.^2.*pi^2.*tspan(tau)).*sin(nspace.*pi.*x).*c);
 end
 uexact=zeros(length(xf),length(tspan));
 for j=1:length(tspan)
@@ -50,12 +57,11 @@ We plot the solution using
 figure;
 for i = 1:n+1,
     plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9], 'LineWidth',1.)
-hold on
+    hold on
 end
-for j=1:length(tspan)
-    plot(xf,u(:,j),'m--','LineWidth',2.0)
-    plot(xf,uexact(:,j),'b-','LineWidth',2.0)
-end
+plot(xf,uexact,'black-','LineWidth',2.0)
+plot(xf,u,'r--','LineWidth',2.0)
+axis([0,1,0,1])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
@@ -64,36 +70,6 @@ set(gca,'FontSize',14,'Layer','top')
 <figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExA.png"></figure>
 
 ### Example B
-```
-n     = 4-1;                      % Number of interfaces
-sigma = sqrt([.2, .01, .1, 1.]);  % Diffusivities 
-xj = linspace(0,1,n+2);
-xj = xj(2:n+2);                   % Location of interfaces
-u0    = @(x) ones(size(x));       % Initial condition
-beta  = [1, 0, .2, .4, 1, .1];    % Boundary conditions
-tspan = [.02,0.1,0.5,1,2,10];     % Times at which to compute solution
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
-```
-
-We plot the solution using
-```
-figure;
-for i = 1:n+1,
-    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
-    hold on
-end
-for j=1:length(tspan)
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
-end
-xlabel('$x$','Interpreter','LaTeX','FontSize',20)
-ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
-set(gca,'FontSize',14,'Layer','top')
-```
-
-<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExB.png"></figure>
-
-
-### Example C
 ```
 n     = 10-1;                      % Number of interfaces
 sigma = ones(n+1,1);               % Diffusivities 
@@ -105,17 +81,19 @@ end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
 u0    = @(x) zeros(size(x));      % Initial condition
-beta  = [1, 0, 1, 1,0, 0];        % Boundary conditions
+beta  = [1, 0, 1,0];              % Boundary conditions
+f1  = @(t) 1;                     % RHS Boundary condition 1
+f2  = @(t) 0;                     % RHS Boundary condition 2
 tspan = [0.0005, .01, .2, 1.];    % Times at which to compute solution
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect');
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,'Perfect');
 
 figure;
 for i = 1:n+1,
-    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+    plot([xj(i),xj(i)],[min(min(u))-.1,max(max(u))+.1],'Color',[0.9,0.9,0.9])
     hold on
 end
 for j=1:length(tspan)
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
 end
 axis([0,1,0,2])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
@@ -123,40 +101,37 @@ ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExC.png"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExB.png"></figure>
 
-### Example D
+### Example C
 ```
-n     = 10-1;                      % Number of interfaces
-sigma = ones(n+1,1);               % Diffusivities 
-j=1;
-while 2*j<=n+1
-    sigma(2*j)=sqrt(.1);
-    j=j+1;
-end
-xj    = linspace(0,1,n+2);
-xj    = xj(2:n+2);                % Location of interfaces
-u0    = @(x) zeros(size(x));       % Initial condition
-beta  = [1, 0, 1, 0,1, 0];        % Boundary conditions
-tspan = [0.007, 2., 10.];         % Times at which to compute solution
-H     = .5*ones(1,n);             % Contact coefficients
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Imperfect', H);
+n     = 4-1;                      % Number of interfaces
+sigma = sqrt([.2, .01, .1, 1.]);  % Diffusivities 
+xj = linspace(0,1,n+2);
+xj = xj(2:n+2);                   % Location of interfaces
+u0    = @(x) ones(size(x));       % Initial condition
+beta  = [1, 0, 1, 1];             % Boundary conditions
+f1  = @(t) cos(t);                % RHS Boundary condition 1
+f2  = @(t) 1.;                    % RHS Boundary condition 2
+tspan = [0.5,1,2,10];             % Times at which to compute solution
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1, f2, tspan,'Perfect',options);
 
 figure;
 for i = 1:n+1,
-    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
-    hold on
+    plot([xj(i),xj(i)],[min(min(u))-.1,max(max(u))+.1],'Color',[0.9,0.9,0.9])
+hold on
 end
 for j=1:length(tspan)
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
 end
-axis([0,1,-.1,4])
+axis([0,1,-1,1.1])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
+
 ```
 
-<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExD.png"></figure>
+<figure><img src="https://github.com/nsheils/UTM_Heat/blob/master/ExC.png"></figure>
 
 
 ## License
