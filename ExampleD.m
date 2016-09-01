@@ -31,15 +31,15 @@ toc
 % Plot
 figure;
 for i = 1:n+1,
-    plot([xj(i),xj(i)],[min(min(u)),max(max(u))],'Color',[0.9,0.9,0.9])
+    plot([xj(i),xj(i)],[min(min(u))-.1,max(max(u))+.1],'Color',[0.9,0.9,0.9])
     hold on
 end
 for j=1:length(tspan)
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
 end
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
-axis([0,1,-.1,4])
+axis([0,1,-.1,2.])
 set(gca,'FontSize',14,'Layer','top')
 saveas(gcf,'ExD.pdf')
 
@@ -49,11 +49,11 @@ for j=1:length(tspan)
         plot([xj(i),xj(i)],[min(min(u))-.1,max(max(u))+.1],'Color',[0.9,0.9,0.9], 'LineWidth',1.)
         hold on
     end
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
     xlabel('$x$','Interpreter','LaTeX','FontSize',20)
     ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
     title(['$t=$ ',num2str(tspan(j))],'Interpreter','LateX','FontSize',20)
-    axis([0,1,-.1,4])
+    axis([0,1,-.1,2.])
     set(gca,'FontSize',14,'Layer','top')
     filename=['ExD_t', num2str(tspan(j))];
     filename(filename==['.'])=[];

@@ -80,11 +80,11 @@ function [u,xf]=UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,interface,varargin)
 %                - NX   number of divisions within each slab. U(:,j) gives
 %                       the solution at xf =
 %                       xj(i-1):(xj(i)-xj(i-1))/NX:xj(i) and t = tspan(j).
-%                       [NX = 50 by default]
+%                       [NX = 15 by default]
 %                - NN   Integration bounds (-NN, NN)
 %                       [NN = 20 by default]
 %                - Ny   number of points to use in integration.
-%                       [Ny = 100 by default]
+%                       [Ny = 200 by default]
 %
 %   Output Arugments:
 %   -----------------------------------------------------------------------
@@ -210,20 +210,14 @@ if isfield(options,'Ny')
         error('options.Ny must be an integer greater than or equal to 5.')
     end
 else
-    Ny = 100; % Default
+    Ny = 200; % Default
 end
-
-% Get boundary condition constants
-beta1    = beta(1);
-beta2    = beta(2);
-beta3    = beta(3);
-beta4    = beta(4);
 
 % Check boundary conditions are implemented correctly
-if beta1 == 0 && beta2 == 0
+if beta(1) == 0 && beta(2) == 0
     error('Boundary condition is incorrect at left boundary.')
 end
-if beta3 == 0 && beta4 == 0
+if beta(3) == 0 && beta(4) == 0
     error('Boundary condition is incorrect at right boundary.')
 end
 
@@ -231,10 +225,8 @@ end
 % Grid spacing within each slab
 % -------------------------------------------------------------------------
 xgrid = zeros(NX+1,n+1);
-
 % Slab 1 (First slab)
 xgrid(:,1) = 0:xj(1)/NX:xj(1);
-
 % Slabs 2,...,n+1
 for i = 2:n+1
     xgrid(:,i) = xj(i-1):(xj(i)-xj(i-1))/NX:xj(i);
@@ -258,8 +250,7 @@ end
 Y=cell(2*n+4,length(tspan));
 Y(:)={0};
 
-nuspace=linspace(-NN,NN,Ny+1);
-thetaspace=nuspace;
+thetaspace=linspace(-NN,NN,Ny+1);
 %kspace is used to integrate initial condition only
 kspace=linspace(-300,300,10*(Ny+1));
 kp= @(theta) 1i.*sin(pi/8-1i.*theta);
@@ -287,10 +278,10 @@ if strcmp(interface,'Imperfect')
     % Build matrix A to solve for unknown functions
     % ---------------------------------------------------------------------
     %boundary conditions
-    A11{1,1}=@(nu) beta2;
-    A11{1,2}=@(nu) beta1;
-    A22{n+2,n+1}=@(nu) beta3;
-    A22{n+2,n+2}=@(nu) beta4;
+    A11{1,1}=@(nu) beta(2);
+    A11{1,2}=@(nu) beta(1);
+    A22{n+2,n+1}=@(nu) beta(3);
+    A22{n+2,n+2}=@(nu) beta(4);
     
     A11{2,1}= @(nu) -sigma(1).^2;
     A11{2,2}= @(nu) -1i.*sigma(1).*nu;
@@ -298,12 +289,12 @@ if strcmp(interface,'Imperfect')
     A21{1,2}= @(nu) 1i.*sigma(1).*nu;
     for j=1:n
         A11{j+1,j+2}=@(nu) arrayfun(@(j) H(j).*exp(-1i.*nu.*xj(j)./sigma(j)),j);
-        A11{j+2,j+2}=@(nu) arrayfun(@(j)-(H(j)+1i.*sigma(j+1).*nu).*exp(-1i.*nu.*xj(j)./sigma(j+1)),j);
+        A11{j+2,j+2}=@(nu) arrayfun(@(j) -(H(j)+1i.*sigma(j+1).*nu).*exp(-1i.*nu.*xj(j)./sigma(j+1)),j);
         A12{j+1,j}=@(nu) arrayfun(@(j) (1i.*sigma(j).*nu-H(j)).*exp(-1i.*nu.*xj(j)./sigma(j)),j);
         A12{j+2,j}=@(nu) arrayfun(@(j) H(j)*exp(-1i.*nu.*xj(j)./sigma(j+1)),j);
         A21{j,j+2}=@(nu) arrayfun(@(j) H(j)*exp(1i.*nu.*xj(j)/sigma(j)),j);
-        A21{j+1,j+2}=@(nu) arrayfun(@(j)(1i.*sigma(j+1).*nu-H(j)).*exp(1i.*nu.*xj(j)./sigma(j+1)),j);
-        A22{j,j}=@(nu) arrayfun(@(j)-(1i.*sigma(j).*nu+H(j)).*exp(1i.*nu.*xj(j)./sigma(j)),j);
+        A21{j+1,j+2}=@(nu) arrayfun(@(j) (1i.*sigma(j+1).*nu-H(j)).*exp(1i.*nu.*xj(j)./sigma(j+1)),j);
+        A22{j,j}=@(nu) arrayfun(@(j) -(1i.*sigma(j).*nu+H(j)).*exp(1i.*nu.*xj(j)./sigma(j)),j);
         A22{j+1,j}=@(nu) arrayfun(@(j) H(j)*exp(1i.*nu.*xj(j)./sigma(j+1)),j);
     end
     
@@ -362,12 +353,12 @@ if strcmp(interface,'Imperfect')
     
     for j=1:length(thetaspace)
         for tau=1:length(tspan)
-            if isnan(det(Apnu{j}))== 0 && rcond(Apnu{j})>10e-7 && sum(isnan(Ypnu{j}(:,tau)))==0
+            if sum(isnan(Ypnu{j}(:,tau)))==0 && sum(isinf(Ypnu{j}(:,tau)))==0
                 Xp{j,tau}=sparse(Apnu{j})\Ypnu{j}(:,tau);
             else
                 Xp{j,tau}=zeros(2*n+4,1);
             end
-            if isnan(det(Amnu{j}))== 0 && rcond(Amnu{j})>10e-7 && sum(isnan(Ypnu{j}(:,tau)))==0
+            if sum(isnan(Ymnu{j}(:,tau)))==0 && sum(isinf(Ymnu{j}(:,tau)))==0
                 Xm{j,tau}=sparse(Amnu{j})\Ymnu{j}(:,tau);
             else
                 Xm{j,tau}=zeros(2*n+4,1);
@@ -403,7 +394,7 @@ if strcmp(interface,'Imperfect')
     for s=1:length(tspan)
         usoln{1,s}=@(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(1).*kspace).^2.*tspan(s)).*arrayfun(u0hat{1},kspace))...
             -1/(2*pi*sigma(1)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(1))/sigma(1)-km(thetaspace).^2.*tspan(s)).*(H(1).*transpose(g0m{2,s}(:))+(1i.*sigma(1).*km(thetaspace)-H(1)).*transpose(h0m{1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*x/sigma(1)-kp(thetaspace).^2.*tspan(s)).*(sigma(1)*transpose(g1p{s}(:))+(1i.*kp(thetaspace)-transpose(g0p{1,s}(:))))).*(cos(pi/8-1i.*thetaspace)));
+            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*x/sigma(1)-kp(thetaspace).^2.*tspan(s)).*(sigma(1)*transpose(g1p{s}(:))+1i.*kp(thetaspace).*transpose(g0p{1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
         for j=2:n
             usoln{j,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(j).*kspace).^2.*tspan(s)).*arrayfun(u0hat{j},kspace))...
                 -1/(2*pi*sigma(j)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(j))/sigma(j)-km(thetaspace).^2.*tspan(s)).*(H(j).*transpose(g0m{j+1,s}(:))+(1i.*sigma(j).*km(thetaspace)-H(j)).*transpose(h0m{j,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
@@ -422,19 +413,19 @@ if strcmp(interface,'Imperfect')
             end
         end
     end
-    % ---------------------------------------------------------------------
-    % PERFECT INTERFACE conditions
-    % ---------------------------------------------------------------------
+% -------------------------------------------------------------------------
+% PERFECT INTERFACE conditions
+% -------------------------------------------------------------------------
 elseif strcmp(interface,'Perfect')
     
     % ---------------------------------------------------------------------
     % Build matrix A to solve for unknown functions
     % ---------------------------------------------------------------------
     %boundary conditions
-    A11{1,1}=@(nu) beta1;
-    A12{1,1}=@(nu) beta2;
-    A21{n+2,n+2}=@(nu) beta3;
-    A22{n+2,n+2}=@(nu) beta4;
+    A11{1,1}=@(nu) beta(1);
+    A12{1,1}=@(nu) beta(2);
+    A21{n+2,n+2}=@(nu) beta(3);
+    A22{n+2,n+2}=@(nu) beta(4);
     A11{2,1}=@(nu) -1i.* sigma(1).*nu;
     A12{2,1}=@(nu) -sigma(1)^2;
     A21{1,1}= @(nu) 1i.*sigma(1).*nu;
@@ -466,9 +457,9 @@ elseif strcmp(interface,'Perfect')
     end
     for tau=1:length(tspan)
         s=linspace(0,tspan(tau),100*Ny*tspan(tau));
-        % FOURIER TRANSFORM OF Condition on right
-        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
         % FOURIER TRANSFORM OF Condition on left
+        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
+        % FOURIER TRANSFORM OF Condition on right
         Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2(s));
         for j=1:n+1
             Y{j+1,tau}=@(nu) arrayfun(@(j) -u0hat{j}(nu./sigma(j)),j);
@@ -517,7 +508,7 @@ elseif strcmp(interface,'Perfect')
         end
     end
     
-    g0p=cell(n+2,length(tspan));
+    g0p=cell(n+1,length(tspan));
     g0p(:)={zeros(length(thetaspace),1)};
     g0m=g0p;
     g1p=g0p;
@@ -527,7 +518,7 @@ elseif strcmp(interface,'Perfect')
     h1n1m=h0n1m;
     for tau=1:length(tspan)
         for k=1:length(thetaspace)
-            for j=1:n+2
+            for j=1:n+1
                 g0p{j,tau}(k)=Xp{k,tau}(j);
                 g0m{j,tau}(k)=Xm{k,tau}(j);
                 g1p{j,tau}(k)=Xp{k,tau}(j+n+2);

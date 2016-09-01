@@ -5,7 +5,7 @@ clc
 addpath('..')
 
 % Parameters
-n     = 200-1;                      % Number of interfaces
+n     = 200-1;                     % Number of interfaces
 sigma = ones(n+1,1);               % Diffusivities 
 for j=1:n+1;
     sigma(j)=sqrt(1.1+sin(j));
@@ -13,13 +13,15 @@ end
 xj = linspace(0,1,n+2);
 xj = xj(2:n+2);                   % Location of interfaces
 u0    = @(x) ones(size(x));       % Initial condition
-beta  = [1, 0, .5, 1, 0, 0];      % Boundary conditions
+beta  = [1, 0, 1, 0];             % Boundary conditions
+f1  = @(t) .5;                    % RHS Boundary condition 1
+f2  = @(t) 0;                     % RHS Boundary condition 2
 tspan = [.01,0.1,0.3,5.];         % Times at which to compute solution
 options.NX    = 15;               % Number of places to evaluate solution
 options.NN    = 20;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 tic
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Perfect',options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1, f2, tspan,'Perfect',options);
 toc
 
 % Plot

@@ -6,24 +6,24 @@ clear all
 addpath('..')
 
 % Parameters
-n     = 200-1;                      % Number of interfaces
+n     = 100-1;                     % Number of interfaces
 sigma = ones(n+1,1);               % Diffusivities 
 for j=1:n+1;
     sigma(j)=sqrt(1.1+sin(j));
 end
 xj = linspace(0,1,n+2);
 xj = xj(2:n+2);                   % Location of interfaces
-u0    = @(x) ones(size(x));       % Initial condition
-beta  = [1, 0, 1, 0];             % Boundary conditions
-f1  = @(t) .5;                    % RHS Boundary condition 1
-f2  = @(t) 0;                     % RHS Boundary condition 2
-tspan = [.01,0.1,0.3,5.];         % Times at which to compute solution
+u0    = @(x) x;                   % Initial condition
+beta  = [1, 1, 1, 0];             % Boundary conditions
+f1  = @(t) 1.;                    % RHS Boundary condition 1
+f2  = @(t) 1.;                    % RHS Boundary condition 2
+tspan = [0.1,0.3,5.];             % Times at which to compute solution
 options.NX    = 15;               % Number of places to evaluate solution
 options.NN    = 20;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 H     = .5*ones(1,n);             % Contact coefficients
 tic
-[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,tspan,'Imperfect',H, options);
+[u,xf] = UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,'Imperfect',H, options);
 toc
 
 % Plot
@@ -33,7 +33,7 @@ for i = 1:n+1,
     hold on
 end
 for j=1:length(tspan)
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
 end
 axis([0,1,0,1.1])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
@@ -47,7 +47,7 @@ for j=1:length(tspan)
         plot([xj(i),xj(i)],[min(min(u))-.1,max(max(u))+.1],'Color',[0.9,0.9,0.9], 'LineWidth',1.)
         hold on
     end
-    plot(xf,u(:,j),'m-','LineWidth',2.0)
+    plot(xf,u(:,j),'r-','LineWidth',2.0)
     axis([0,1,0,1.1])
     xlabel('$x$','Interpreter','LaTeX','FontSize',20)
     ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)

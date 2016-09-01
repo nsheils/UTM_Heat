@@ -30,7 +30,7 @@ for i = 1:m-1,
     hold on
 end
 plot(xmd,umd,'b','LineWidth',2.0)
-plot(xf,u,'m--','LineWidth',2.0)
+plot(xf,u,'r--','LineWidth',2.0)
 axis([0,1,-.1,2])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
@@ -44,7 +44,7 @@ for j=1:length(tspan)
         hold on
     end
     plot(xmd,umd(:,j),'b','LineWidth',2.0)
-    plot(xf,u(:,j),'m--','LineWidth',2.0)
+    plot(xf,u(:,j),'r--','LineWidth',2.0)
     xlabel('$x$','Interpreter','LaTeX','FontSize',20)
     ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
     axis([0,1,-.1,2])
@@ -54,3 +54,17 @@ for j=1:length(tspan)
     filename(filename==['.'])=[];
     saveas(gcf,[filename '.pdf'])
 end
+
+%%For Paper
+figure;
+for i = 1:m-1, 
+    plot([l(i),l(i)],[-0.1,2],'Color',[0.9,0.9,0.9])
+    hold on
+end
+plot(xmd,umd,'b','LineWidth',2.0)
+plot(xf,u,'r--','LineWidth',2.0)
+axis([0,1,-.1,2])
+ax=gca;
+ax.XTickLabel={};
+ax.YTickLabel={};
+saveas(gcf,'ExD_p.pdf')
