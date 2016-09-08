@@ -60,7 +60,7 @@ function [u,xf]=UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,interface,varargin)
 %               .^ in the definition of u0 so that it can be evaluated with
 %               a vector argument.
 %   beta        A vector of four values specifying the boudary conditons
-%               beta=(beta1,beta2,beta3,beta4) 
+%               beta=(beta1,beta2,beta3,beta4)
 %   f1          A function handle specifying the RHS of the boundary
 %               condition.
 %   f2          A function handle specifying the RHS of the boundary
@@ -80,9 +80,11 @@ function [u,xf]=UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,interface,varargin)
 %                - NX   number of divisions within each slab. U(:,j) gives
 %                       the solution at xf =
 %                       xj(i-1):(xj(i)-xj(i-1))/NX:xj(i) and t = tspan(j).
+%                       NX does not change the accuracy of the code, just
+%                       the places where the solution is evaluated.
 %                       [NX = 15 by default]
 %                - NN   Integration bounds (-NN, NN)
-%                       [NN = 20 by default]
+%                       [NN = 10 by default]
 %                - Ny   number of points to use in integration.
 %                       [Ny = 200 by default]
 %
@@ -201,7 +203,7 @@ if isfield(options,'NN')
         error('options.NN must be an integer greater than or equal to 5.')
     end
 else
-    NN = 20; % Default
+    NN = 10; % Default
 end
 % Number of points to use in integration
 if isfield(options,'Ny')
@@ -232,6 +234,7 @@ for i = 2:n+1
     xgrid(:,i) = xj(i-1):(xj(i)-xj(i-1))/NX:xj(i);
 end
 xf = reshape(xgrid,(NX+1)*(n+1),1);
+
 % -------------------------------------------------------------------------
 % Preliminaries
 % -------------------------------------------------------------------------
@@ -243,18 +246,20 @@ A22=A11;
 
 %Build the u0hat(k) functions
 u0hat=cell(n+1,1);
-for j=1:n+1
-    u0hat{j}= @(k) trapz(xgrid(:,j),exp(-1i.*k.*xgrid(:,j)).*arrayfun(u0,xgrid(:,j)));
+u0hat{1}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),0,xj(1));
+for j=2:n+1
+   u0hat{j}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),xj(j-1),xj(j));
 end
+%someimes these are NaN--we fix that in the evaluation of X.
+warning('off','MATLAB:integral:NonFiniteValue')
 
 Y=cell(2*n+4,length(tspan));
 Y(:)={0};
-
 thetaspace=linspace(-NN,NN,Ny+1);
-%kspace is used to integrate initial condition only
-kspace=linspace(-300,300,10*(Ny+1));
+%parameterize D+ and D-
 kp= @(theta) 1i.*sin(pi/8-1i.*theta);
 km= @(theta) -1i.*sin(pi/8-1i.*theta);
+
 myYp=cell(2*n+4,length(tspan));
 myYm=myYp;
 myAp=cell(2*n+4,2*n+4);
@@ -313,15 +318,15 @@ if strcmp(interface,'Imperfect')
         end
     end
     
+    % Note this Y is scaled
     for tau=1:length(tspan)
-        s=linspace(0,tspan(tau));
-        % FOURIER TRANSFORM OF Condition on right
-        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
-        % FOURIER TRANSFORM OF Condition on left
-        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2(s));
+        % FOURIER TRANSFORM OF condition on left
+        Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        % FOURIER TRANSFORM OF condition on right
+        Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
         for j=1:n+1
-            Y{j+1,tau}=@(nu) arrayfun(@(j) -u0hat{j}(nu./sigma(j)),j);
-            Y{n+2+j,tau}=@(nu) arrayfun(@(j) -u0hat{j}(-nu./sigma(j)),j);
+            Y{j+1,tau}=@(nu) arrayfun(@(j) -exp(-nu.^2*tspan(tau)).*u0hat{j}(nu./sigma(j)),j);
+            Y{n+2+j,tau}=@(nu) arrayfun(@(j) -exp(-nu.^2*tspan(tau)).*u0hat{j}(-nu./sigma(j)),j);
         end
     end
     
@@ -392,17 +397,17 @@ if strcmp(interface,'Imperfect')
     % ---------------------------------------------------------------------
     usoln=cell(n+1,length(tspan));
     for s=1:length(tspan)
-        usoln{1,s}=@(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(1).*kspace).^2.*tspan(s)).*arrayfun(u0hat{1},kspace))...
-            -1/(2*pi*sigma(1)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(1))/sigma(1)-km(thetaspace).^2.*tspan(s)).*(H(1).*transpose(g0m{2,s}(:))+(1i.*sigma(1).*km(thetaspace)-H(1)).*transpose(h0m{1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*x/sigma(1)-kp(thetaspace).^2.*tspan(s)).*(sigma(1)*transpose(g1p{s}(:))+1i.*kp(thetaspace).*transpose(g0p{1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+        usoln{1,s}=@(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(1).*k).^2.*tspan(s)).*arrayfun(u0hat{1},k),-Inf,Inf)...
+            -1/(2*pi*sigma(1)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(1))/sigma(1)).*(H(1).*transpose(g0m{2,s}(:))+(1i.*sigma(1).*km(thetaspace)-H(1)).*transpose(h0m{1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
+            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*x/sigma(1)).*(sigma(1)*transpose(g1p{s}(:))+1i.*kp(thetaspace).*transpose(g0p{1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
         for j=2:n
-            usoln{j,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(j).*kspace).^2.*tspan(s)).*arrayfun(u0hat{j},kspace))...
-                -1/(2*pi*sigma(j)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(j))/sigma(j)-km(thetaspace).^2.*tspan(s)).*(H(j).*transpose(g0m{j+1,s}(:))+(1i.*sigma(j).*km(thetaspace)-H(j)).*transpose(h0m{j,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-                -1/(2*pi*sigma(j)).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(j-1))/sigma(j)-kp(thetaspace).^2.*tspan(s)).*((H(j-1)+1i.*sigma(j).*kp(thetaspace)).*transpose(g0p{j,s}(:))-H(j-1).*transpose(h0p{j-1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+            usoln{j,s}= @(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(j).*k).^2.*tspan(s)).*arrayfun(u0hat{j},k),-Inf,Inf)...
+                -1/(2*pi*sigma(j)).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(j))/sigma(j)).*(H(j).*transpose(g0m{j+1,s}(:))+(1i.*sigma(j).*km(thetaspace)-H(j)).*transpose(h0m{j,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
+                -1/(2*pi*sigma(j)).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(j-1))/sigma(j)).*((H(j-1)+1i.*sigma(j).*kp(thetaspace)).*transpose(g0p{j,s}(:))-H(j-1).*transpose(h0p{j-1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
         end
-        usoln{n+1,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(n+1).*kspace).^2.*tspan(s)).*arrayfun(u0hat{n+1},kspace))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(n+1))/sigma(n+1)-km(thetaspace).^2.*tspan(s)).*(sigma(n+1).*transpose(h1m{s}(:))+1i.*km(thetaspace).*transpose(h0m{n+1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-            -1/(2*pi*sigma(n+1)).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(n))/sigma(n+1)-kp(thetaspace).^2.*tspan(s)).*((H(n)+1i.*sigma(n+1).*kp(thetaspace)).*transpose(g0p{n+1,s}(:))-H(n).*transpose(h0p{n,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+        usoln{n+1,s}= @(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(n+1).*k).^2.*tspan(s)).*arrayfun(u0hat{n+1},k),-Inf,Inf)...
+            -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(n+1))/sigma(n+1)).*(sigma(n+1).*transpose(h1m{s}(:))+1i.*km(thetaspace).*transpose(h0m{n+1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
+            -1/(2*pi*sigma(n+1)).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(n))/sigma(n+1)).*((H(n)+1i.*sigma(n+1).*kp(thetaspace)).*transpose(g0p{n+1,s}(:))-H(n).*transpose(h0p{n,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
     end
     
     u=zeros((n+1)*(NX+1),length(tspan));
@@ -455,15 +460,16 @@ elseif strcmp(interface,'Perfect')
             A{j+n+2,k+n+2}=A22{j,k};
         end
     end
+    
+    % Note this Y is scaled
     for tau=1:length(tspan)
-        s=linspace(0,tspan(tau),100*Ny*tspan(tau));
-        % FOURIER TRANSFORM OF Condition on left
-        Y{1,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f1(s));
-        % FOURIER TRANSFORM OF Condition on right
-        Y{2*n+4,tau}=@(nu) trapz(s,exp(nu.^2.*s).*f2(s));
+        % FOURIER TRANSFORM OF condition on left
+        Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        % FOURIER TRANSFORM OF condition on right
+        Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
         for j=1:n+1
-            Y{j+1,tau}=@(nu) arrayfun(@(j) -u0hat{j}(nu./sigma(j)),j);
-            Y{n+2+j,tau}=@(nu) arrayfun(@(j) -u0hat{j}(-nu./sigma(j)),j);
+            Y{j+1,tau}=@(nu) -exp(-nu.^2*tspan(tau)).*arrayfun(@(j) u0hat{j}(nu./sigma(j)),j);
+            Y{n+2+j,tau}=@(nu) -exp(-nu.^2*tspan(tau)).*arrayfun(@(j) u0hat{j}(-nu./sigma(j)),j);
         end
     end
     
@@ -471,7 +477,7 @@ elseif strcmp(interface,'Perfect')
     for j=1:2*n+4
         %Each column of myY corresponds to a given time
         for tau=1:length(tspan)
-            myYp{j,tau}=arrayfun(Y{j,tau},kp(thetaspace));
+            myYp{j,tau}=arrayfun(Y{j,tau},kp(thetaspace)); 
             myYm{j,tau}=arrayfun(Y{j,tau},km(thetaspace));
         end
         for k=1:2*n+4
@@ -493,12 +499,14 @@ elseif strcmp(interface,'Perfect')
         end
     end
     
+    bad=zeros(length(thetaspace),length(tspan));
     for j=1:length(thetaspace)
         for tau=1:length(tspan)
             if sum(isnan(Ypnu{j}(:,tau)))==0 && sum(isinf(Ypnu{j}(:,tau)))==0
                 Xp{j,tau}=sparse(Apnu{j})\Ypnu{j}(:,tau);
             else
                 Xp{j,tau}=zeros(2*n+4,1);
+                bad(j,tau)=1;
             end
             if sum(isnan(Ymnu{j}(:,tau)))==0 && sum(isinf(Ymnu{j}(:,tau)))==0
                 Xm{j,tau}=sparse(Amnu{j})\Ymnu{j}(:,tau);
@@ -529,24 +537,24 @@ elseif strcmp(interface,'Perfect')
         end
     end
     
-    % -------------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     % Solve for u
-    % -------------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     usoln=cell(n+1,length(tspan));
     for s=1:length(tspan)
-        usoln{1,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(1).*kspace).^2.*tspan(s)).*arrayfun(u0hat{1},kspace))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(1))/sigma(1)-km(thetaspace).^2.*tspan(s)).*(sigma(2)^2/sigma(1).*transpose(g1m{2,s}(:))+1i.*km(thetaspace).*transpose(g0m{2,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x)/sigma(1)-kp(thetaspace).^2.*tspan(s)).*(sigma(1).*transpose(g1p{1,s}(:))+1i.*kp(thetaspace).*transpose(g0p{1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+        usoln{1,s}= @(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(1).*k).^2*tspan(s)).*arrayfun(u0hat{1},k), -Inf, Inf)...
+            -1/(2*pi).*trapz(thetaspace,exp(1i.*km(thetaspace).*(x-xj(1))/sigma(1)).*(sigma(2)^2/sigma(1).*transpose(g1m{2,s})+1i.*km(thetaspace).*transpose(g0m{2,s})).*(-cos(pi/8-1i.*thetaspace)))...
+            -1/(2*pi).*trapz(thetaspace,exp(1i.*kp(thetaspace).*(x)/sigma(1)).*(sigma(1).*transpose(g1p{1,s})+1i.*kp(thetaspace).*transpose(g0p{1,s})).*(cos(pi/8-1i.*thetaspace)));
         if n>1
-        for j=2:n
-            usoln{j,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(j).*kspace).^2.*tspan(s)).*arrayfun(u0hat{j},kspace))...
-                -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(j))/sigma(j)-km(thetaspace).^2.*tspan(s)).*(sigma(j+1)^2/sigma(j).*transpose(g1m{j+1,s}(:))+1i.*km(thetaspace).*transpose(g0m{j+1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-                -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(j-1))/sigma(j)-kp(thetaspace).^2.*tspan(s)).*(sigma(j).*transpose(g1p{j,s}(:))+1i.*kp(thetaspace).*transpose(g0p{j,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+            for j=2:n
+                usoln{j,s}= @(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(j).*k).^2.*tspan(s)).*arrayfun(u0hat{j},k),-Inf, Inf)...
+                    -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(j))/sigma(j)).*(sigma(j+1)^2/sigma(j).*transpose(g1m{j+1,s}(:))+1i.*km(thetaspace).*transpose(g0m{j+1,s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
+                    -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(j-1))/sigma(j)).*(sigma(j).*transpose(g1p{j,s}(:))+1i.*kp(thetaspace).*transpose(g0p{j,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+            end
         end
-        end
-        usoln{n+1,s}= @(x) 1/(2*pi)*trapz(kspace,exp(1i.*kspace.*x-(sigma(n+1).*kspace).^2.*tspan(s)).*arrayfun(u0hat{n+1},kspace))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*km(thetaspace).*(x-xj(n+1))/sigma(n+1)-km(thetaspace).^2.*tspan(s)).*(sigma(n+1).*transpose(h1n1m{s}(:))+1i.*km(thetaspace).*transpose(h0n1m{s}(:)))).*(-cos(pi/8-1i.*thetaspace)))...
-            -1/(2*pi).*trapz(thetaspace,(exp(1i.*kp(thetaspace).*(x-xj(n))/sigma(n+1)-kp(thetaspace).^2.*tspan(s)).*(sigma(n+1).*transpose(g1p{n+1,s}(:))+1i.*kp(thetaspace).*transpose(g0p{n+1,s}(:)))).*(cos(pi/8-1i.*thetaspace)));
+        usoln{n+1,s}= @(x) 1/(2*pi)*integral(@(k) exp(1i.*k.*x-(sigma(n+1).*k).^2.*tspan(s)).*arrayfun(u0hat{n+1},k),-Inf,Inf)...
+            -1/(2*pi).*trapz(thetaspace,exp(1i.*km(thetaspace).*(x-xj(n+1))/sigma(n+1)).*(sigma(n+1).*transpose(h1n1m{s})+1i.*km(thetaspace).*transpose(h0n1m{s})).*(-cos(pi/8-1i.*thetaspace)))...
+            -1/(2*pi).*trapz(thetaspace,exp(1i.*kp(thetaspace).*(x-xj(n))/sigma(n+1)).*(sigma(n+1).*transpose(g1p{n+1,s})+1i.*kp(thetaspace).*transpose(g0p{n+1,s})).*(cos(pi/8-1i.*thetaspace)));
     end
     
     u=zeros((n+1)*(NX+1),length(tspan));

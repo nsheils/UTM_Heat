@@ -1,6 +1,4 @@
 close all
-clc
-clear all
 
 % Add directory to current path
 addpath('..')
@@ -19,7 +17,7 @@ f1  = @(t) 1.;                    % RHS Boundary condition 1
 f2  = @(t) 1.;                    % RHS Boundary condition 2
 tspan = [0.1,0.3,5.];             % Times at which to compute solution
 options.NX    = 15;               % Number of places to evaluate solution
-options.NN    = 20;               % Integration bounds
+options.NN    = 10;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
 H     = .5*ones(1,n);             % Contact coefficients
 tic
