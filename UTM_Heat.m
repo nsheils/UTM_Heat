@@ -21,7 +21,7 @@ function [u,xf]=UTM_Heat(n,sigma,xj,u0,beta,f1,f2,tspan,interface,varargin)
 %
 %      u_(i)(x,t) = u0(x)                                    at t = 0
 %      beta1 * u_(1)(x,t) + beta2 * du_(1)/dx(x,t) = f1(t)   at x = 0
-%      beta3 * u_(n)(x,t) + beta4 * du_(m)/dx(x,t) = f2(t)   at x = x_{n+1}
+%      beta3 * u_(n)(x,t) + beta4 * du_(n+1)/dx(x,t) = f2(t)   at x = x_{n+1}
 %
 %   where u_(i) is the solution in layer i, sigma(i)=sqrt(kappa(i)) is the
 %   square root ofdiffusivity in layer i (constant) and beta1, beta2,
@@ -245,13 +245,12 @@ A21=A11;
 A22=A11;
 
 %Build the u0hat(k) functions
+%CALLING THESE FUNCTIONS TAKES ALL THE TIME
 u0hat=cell(n+1,1);
 u0hat{1}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),0,xj(1));
 for j=2:n+1
    u0hat{j}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),xj(j-1),xj(j));
 end
-%someimes these are NaN--we fix that in the evaluation of X.
-warning('off','MATLAB:integral:NonFiniteValue')
 
 Y=cell(2*n+4,length(tspan));
 Y(:)={0};
@@ -321,52 +320,59 @@ if strcmp(interface,'Imperfect')
     % Note this Y is scaled
     for tau=1:length(tspan)
         % FOURIER TRANSFORM OF condition on left
-        Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        if f1(inf)==f1(0) && f1(10)==f1(.2) %If f1(s) is constant we can do the integration ourselves
+            Y{1,tau}= @(nu) f1(tspan(tau)).*(1.-exp(-tspan(tau).*(nu).^2))./(nu).^2;
+        else
+            Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        end
         % FOURIER TRANSFORM OF condition on right
-        Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
+        if f2(inf)==f2(0) && f2(10)==f2(.2) %If f2(s) is constant we can do the integration ourselves
+            Y{2*n+4,tau}= @(nu) f2(tspan(tau)).*(1.-exp(-tspan(tau).*(nu).^2))./(nu).^2;
+        else
+            Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
+        end
         for j=1:n+1
             Y{j+1,tau}=@(nu) arrayfun(@(j) -exp(-nu.^2*tspan(tau)).*u0hat{j}(nu./sigma(j)),j);
             Y{n+2+j,tau}=@(nu) arrayfun(@(j) -exp(-nu.^2*tspan(tau)).*u0hat{j}(-nu./sigma(j)),j);
         end
     end
     
-    %Evaluate everything in the transformed theta interval.
+     %Evaluate everything in the transformed theta interval.
     for j=1:2*n+4
         %Each column of myY corresponds to a given time
         for tau=1:length(tspan)
-            myYp{j,tau}=arrayfun(Y{j,tau},kp(thetaspace));
+            myYp{j,tau}=arrayfun(Y{j,tau},kp(thetaspace)); 
             myYm{j,tau}=arrayfun(Y{j,tau},km(thetaspace));
+            for th=1:length(thetaspace)
+                Ypnu{th}(j,tau)=myYp{j,tau}(th);
+                Ymnu{th}(j,tau)=myYm{j,tau}(th);
+            end
         end
         for k=1:2*n+4
             myAp{j,k}=arrayfun(A{j,k},kp(thetaspace));
             myAm{j,k}=arrayfun(A{j,k},km(thetaspace));
-        end
-    end
-    
-    for th=1:length(thetaspace)
-        for j=1:2*n+4
-            for tau=1:length(tspan)
-                Ypnu{th}(j,tau)=myYp{j,tau}(th);
-                Ymnu{th}(j,tau)=myYm{j,tau}(th);
-            end
-            for k=1:2*n+4
+            for th=1:length(thetaspace)
                 Apnu{th}(j,k)=myAp{j,k}(th);
                 Amnu{th}(j,k)=myAm{j,k}(th);
             end
         end
     end
     
-    for j=1:length(thetaspace)
-        for tau=1:length(tspan)
-            if sum(isnan(Ypnu{j}(:,tau)))==0 && sum(isinf(Ypnu{j}(:,tau)))==0
+    badp=zeros(length(thetaspace),1);
+    badm=zeros(length(thetaspace),1);
+    for tau=1:length(tspan)
+        for j=1:length(thetaspace)
+            if sum(sum(isinf(Apnu{j})))==0
                 Xp{j,tau}=sparse(Apnu{j})\Ypnu{j}(:,tau);
             else
                 Xp{j,tau}=zeros(2*n+4,1);
+                badp(j)=1;
             end
-            if sum(isnan(Ymnu{j}(:,tau)))==0 && sum(isinf(Ymnu{j}(:,tau)))==0
+            if sum(sum(isinf(Amnu{j})))==0
                 Xm{j,tau}=sparse(Amnu{j})\Ymnu{j}(:,tau);
             else
                 Xm{j,tau}=zeros(2*n+4,1);
+                badm(j)=1;
             end
         end
     end
@@ -389,6 +395,45 @@ if strcmp(interface,'Imperfect')
                 h0m{j-1,tau}(k)=Xm{k,tau}(j+n+1);
             end
             h1m{tau}(k)=Xm{k,tau}(2*n+4);
+        end
+    end
+    
+    %%Add a fit to fix when the X values are automatically set to 0.
+    h0m_fitR=cell(length(tspan),1);
+    h0m_fitI=h0m_fitR;
+    h1m_fitR=h0m_fitR;
+    h1m_fitI=h0m_fitR;
+    g0p_fitR=h0m_fitR;
+    g0p_fitI=h0m_fitR;
+    g1p_fitR=h0m_fitR;
+    g1p_fitI=h0m_fitR;
+    g0m_fitR=h0m_fitR;
+    g0m_fitI=h0m_fitR;
+    min_m=find(badm==0,1);
+    max_m=find(badm==0,1,'last');
+    min_p=find(badp==0,1);
+    max_p=find(badp==0,1,'last');
+    for tau=1:length(tspan)
+        h0m_fitR{tau}=fit(transpose(min_m:max_m),real(h0m{n+1,tau}(min_m:max_m)),'pchipinterp');
+        h0m_fitI{tau}=fit(transpose(min_m:max_m),imag(h0m{n+1,tau}(min_m:max_m)),'pchipinterp');
+        h1m_fitR{tau}=fit(transpose(min_m:max_m),real(h1m{tau}(min_m:max_m)),'pchipinterp');
+        h1m_fitI{tau}=fit(transpose(min_m:max_m),imag(h1m{tau}(min_m:max_m)),'pchipinterp');
+        g0p_fitR{tau}=fit(transpose(min_p:max_p),real(g0p{1,tau}(min_p:max_p)),'pchipinterp');
+        g0p_fitI{tau}=fit(transpose(min_p:max_p),imag(g0p{1,tau}(min_p:max_p)),'pchipinterp');
+        g1p_fitR{tau}=fit(transpose(min_p:max_p),real(g1p{tau}(min_p:max_p)),'pchipinterp');
+        g1p_fitI{tau}=fit(transpose(min_p:max_p),imag(g1p{tau}(min_p:max_p)),'pchipinterp');
+        g0m_fitR{tau}=fit(transpose(min_m:max_m),real(g0m{1,tau}(min_m:max_m)),'pchipinterp');
+        g0m_fitI{tau}=fit(transpose(min_m:max_m),imag(g0m{1,tau}(min_m:max_m)),'pchipinterp');
+    end
+    for tau=1:length(tspan)
+        for k=[1:min_p,max_p:length(thetaspace)]
+            g0p{1,tau}(k)=g0p_fitR{tau}(k)+1i*g0p_fitI{tau}(k);
+            g1p{tau}(k)=g1p_fitR{tau}(k)+1i*g1p_fitI{tau}(k);
+        end
+        for k=[1:min_m,max_m:length(thetaspace)]
+            g0m{1,tau}(k)=g0m_fitR{tau}(k)+1i*g0m_fitI{tau}(k);
+            h0m{n+1,tau}(k)=h0m_fitR{tau}(k)+1i*h0m_fitI{tau}(k);
+            h1m{tau}(k)=h1m_fitR{tau}(k)+1i*h1m_fitI{tau}(k);
         end
     end
     
@@ -464,12 +509,24 @@ elseif strcmp(interface,'Perfect')
     % Note this Y is scaled
     for tau=1:length(tspan)
         % FOURIER TRANSFORM OF condition on left
-        Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        if f1(inf)==f1(0) && f1(10)==f1(.2) %If f1(s) is constant we can do the integration ourselves
+            Y{1,tau}= @(nu) f1(tspan(tau)).*(1.-exp(-tspan(tau).*(nu).^2))./(nu).^2;
+        else
+            Y{1,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f1(s),0,tspan(tau));
+        end
         % FOURIER TRANSFORM OF condition on right
-        Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
-        for j=1:n+1
-            Y{j+1,tau}=@(nu) -exp(-nu.^2*tspan(tau)).*arrayfun(@(j) u0hat{j}(nu./sigma(j)),j);
-            Y{n+2+j,tau}=@(nu) -exp(-nu.^2*tspan(tau)).*arrayfun(@(j) u0hat{j}(-nu./sigma(j)),j);
+        if f2(inf)==f2(0) && f2(10)==f2(.2) %If f2(s) is constant we can do the integration ourselves
+            Y{2*n+4,tau}= @(nu) f2(tspan(tau)).*(1.-exp(-tspan(tau).*(nu).^2))./(nu).^2;
+        else
+            Y{2*n+4,tau}= @(nu) integral(@(s) exp(nu.^2.*(s-tspan(tau))).*f2(s),0,tspan(tau));
+        end
+        %Y doesn't play nicely with previously defined u0hats so we plug in
+        % full formula here.
+        Y{1+1,tau}=@(nu) -integral(@(x) exp(-nu.^2*tspan(tau)-1i.*nu./sigma(1).*x).*u0(x),0,xj(1));
+        Y{n+2+1,tau}=@(nu) -integral(@(x) exp(-nu.^2*tspan(tau)+1i.*nu./sigma(1).*x).*u0(x),0,xj(1));
+        for j=2:n+1
+            Y{j+1,tau}=@(nu) arrayfun(@(j) -integral(@(x) exp(-nu.^2*tspan(tau)-1i.*nu./sigma(j).*x).*u0(x),xj(j-1),xj(j)),j);
+            Y{n+2+j,tau}=@(nu) arrayfun(@(j) -integral(@(x) exp(-nu.^2*tspan(tau)+1i.*nu./sigma(j).*x).*u0(x),xj(j-1),xj(j)),j);
         end
     end
     
@@ -479,39 +536,36 @@ elseif strcmp(interface,'Perfect')
         for tau=1:length(tspan)
             myYp{j,tau}=arrayfun(Y{j,tau},kp(thetaspace)); 
             myYm{j,tau}=arrayfun(Y{j,tau},km(thetaspace));
+            for th=1:length(thetaspace)
+                Ypnu{th}(j,tau)=myYp{j,tau}(th);
+                Ymnu{th}(j,tau)=myYm{j,tau}(th);
+            end
         end
         for k=1:2*n+4
             myAp{j,k}=arrayfun(A{j,k},kp(thetaspace));
             myAm{j,k}=arrayfun(A{j,k},km(thetaspace));
-        end
-    end
-    
-    for th=1:length(thetaspace)
-        for j=1:2*n+4
-            for tau=1:length(tspan)
-                Ypnu{th}(j,tau)=myYp{j,tau}(th);
-                Ymnu{th}(j,tau)=myYm{j,tau}(th);
-            end
-            for k=1:2*n+4
+            for th=1:length(thetaspace)
                 Apnu{th}(j,k)=myAp{j,k}(th);
                 Amnu{th}(j,k)=myAm{j,k}(th);
             end
         end
     end
     
-    bad=zeros(length(thetaspace),length(tspan));
-    for j=1:length(thetaspace)
-        for tau=1:length(tspan)
-            if sum(isnan(Ypnu{j}(:,tau)))==0 && sum(isinf(Ypnu{j}(:,tau)))==0
+    badp=zeros(length(thetaspace),1);
+    badm=zeros(length(thetaspace),1);
+    for tau=1:length(tspan)
+        for j=1:length(thetaspace)
+            if sum(sum(isinf(Apnu{j})))==0
                 Xp{j,tau}=sparse(Apnu{j})\Ypnu{j}(:,tau);
             else
                 Xp{j,tau}=zeros(2*n+4,1);
-                bad(j,tau)=1;
+                badp(j)=1;
             end
-            if sum(isnan(Ymnu{j}(:,tau)))==0 && sum(isinf(Ymnu{j}(:,tau)))==0
+            if sum(sum(isinf(Amnu{j})))==0
                 Xm{j,tau}=sparse(Amnu{j})\Ymnu{j}(:,tau);
             else
                 Xm{j,tau}=zeros(2*n+4,1);
+                badm(j)=1;
             end
         end
     end
@@ -536,6 +590,45 @@ elseif strcmp(interface,'Perfect')
             h1n1m{tau}(k)=Xm{k,tau}(2*n+4);
         end
     end
+    
+    %%Add a fit to fix when the X values are automatically set to 0.
+    h0n1m_fitR=cell(length(tspan),1);
+    h0n1m_fitI=h0n1m_fitR;
+    h1n1m_fitR=h0n1m_fitR;
+    h1n1m_fitI=h0n1m_fitR;
+    g0p_fitR=h0n1m_fitR;
+    g0p_fitI=h0n1m_fitR;
+    g1p_fitR=h0n1m_fitR;
+    g1p_fitI=h0n1m_fitR;
+    g0m_fitR=h0n1m_fitR;
+    g0m_fitI=h0n1m_fitR;
+    min_m=find(badm==0,1);
+    max_m=find(badm==0,1,'last');
+    min_p=find(badp==0,1);
+    max_p=find(badp==0,1,'last');
+    for tau=1:length(tspan)
+        h0n1m_fitR{tau}=fit(transpose(min_m:max_m),real(h0n1m{tau}(min_m:max_m)),'pchipinterp');
+        h0n1m_fitI{tau}=fit(transpose(min_m:max_m),imag(h0n1m{tau}(min_m:max_m)),'pchipinterp');
+        h1n1m_fitR{tau}=fit(transpose(min_m:max_m),real(h1n1m{tau}(min_m:max_m)),'pchipinterp');
+        h1n1m_fitI{tau}=fit(transpose(min_m:max_m),imag(h1n1m{tau}(min_m:max_m)),'pchipinterp');
+        g0p_fitR{tau}=fit(transpose(min_p:max_p),real(g0p{1,tau}(min_p:max_p)),'pchipinterp');
+        g0p_fitI{tau}=fit(transpose(min_p:max_p),imag(g0p{1,tau}(min_p:max_p)),'pchipinterp');
+        g1p_fitR{tau}=fit(transpose(min_p:max_p),real(g1p{1,tau}(min_p:max_p)),'pchipinterp');
+        g1p_fitI{tau}=fit(transpose(min_p:max_p),imag(g1p{1,tau}(min_p:max_p)),'pchipinterp');
+        g0m_fitR{tau}=fit(transpose(min_m:max_m),real(g0m{1,tau}(min_m:max_m)),'pchipinterp');
+        g0m_fitI{tau}=fit(transpose(min_m:max_m),imag(g0m{1,tau}(min_m:max_m)),'pchipinterp');
+    end
+    for tau=1:length(tspan)
+        for k=[1:min_p,max_p:length(thetaspace)]
+            g0p{1,tau}(k)=g0p_fitR{tau}(k)+1i*g0p_fitI{tau}(k);
+            g1p{1,tau}(k)=g1p_fitR{tau}(k)+1i*g1p_fitI{tau}(k);
+        end
+        for k=[1:min_m,max_m:length(thetaspace)]
+            g0m{1,tau}(k)=g0m_fitR{tau}(k)+1i*g0m_fitI{tau}(k);
+            h0n1m{tau}(k)=h0n1m_fitR{tau}(k)+1i*h0n1m_fitI{tau}(k);
+            h1n1m{tau}(k)=h1n1m_fitR{tau}(k)+1i*h1n1m_fitI{tau}(k);
+        end
+    end 
     
     % ---------------------------------------------------------------------
     % Solve for u

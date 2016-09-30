@@ -1,4 +1,5 @@
 close all
+clear all
 
 % Add directory to current path
 addpath('..')
@@ -13,7 +14,7 @@ while 2*j<=n+1
 end
 xj    = linspace(0,1,n+2);
 xj    = xj(2:n+2);                % Location of interfaces
-u0    = @(x) zeros(size(x));      % Initial condition
+u0    = @(x) zeros(size(x));       % Initial condition
 beta  = [1, 0, 1,0];              % Boundary conditions
 f1  = @(t) 1;                     % LHS Boundary condition
 f2  = @(t) 0;                     % RHS Boundary condition

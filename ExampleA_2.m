@@ -12,8 +12,8 @@ xj    = [1/3,2/3,1];              % Location of interfaces
 u0    = @(x) x.^3;                % Initial condition
 beta  = [1,0,1,0];                % Boundary conditions
 f1  = @(t) 0.;                    % LHS Boundary condition
-f2  = @(t) 1.;                    % RHS Boundary condition
-tspan = [.01,.1,1];               % Times at which to compute solution
+f2  = @(t) 0.;                    % RHS Boundary condition
+tspan = [.001,.01,.1];            % Times at which to compute solution
 options.NX    = 25;               % Number of places to evaluate solution
 options.NN    = 10;               % Integration bounds
 options.Ny    = 200;              % Number of points to use in integration
@@ -23,7 +23,7 @@ toc
 
 %EXACT solution.  Only works for Dirichlet data
 clear f1; clear f2;
-f1=0; f2= 1.;
+f1=0; f2= 0.;
 nspace=1:1000;
 ue=cell(length(tspan),1);
 c=zeros(1,length(nspace));
@@ -49,11 +49,11 @@ for i = 1:n+1,
 end
 plot(xf,uexact,'black-','LineWidth',2.0)
 plot(xf,u,'r--','LineWidth',2.0)
-axis([0,1,0,1])
+axis([0,1,0,max(max(u))])
 xlabel('$x$','Interpreter','LaTeX','FontSize',20)
 ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
 set(gca,'FontSize',14,'Layer','top')
-saveas(gcf,'ExA.pdf')
+saveas(gcf,'ExA_2.pdf')
 
 for j=1:length(tspan)
     figure
@@ -63,12 +63,12 @@ for j=1:length(tspan)
     end
     plot(xf,uexact(:,j),'black-','LineWidth',2.0)
     plot(xf,u(:,j),'r--','LineWidth',2.0)
-    axis([0,1,0,1])
+    axis([0,1,0,max(max(u))])
     xlabel('$x$','Interpreter','LaTeX','FontSize',20)
     ylabel('$u(x,t)$','Interpreter','LaTeX','FontSize',20)
     title(['$t=$ ',num2str(tspan(j))],'Interpreter','LateX','FontSize',20)
     set(gca,'FontSize',14,'Layer','top')
-    filename=['ExA_t', num2str(tspan(j))];
+    filename=['ExA_2_t', num2str(tspan(j))];
     filename(filename==['.'])=[];
     saveas(gcf,[filename '.pdf'])
 end
@@ -81,8 +81,8 @@ for i = 1:n+1,
 end
 plot(xf,uexact,'black-','LineWidth',2.0)
 plot(xf,u,'r--','LineWidth',2.0)
-axis([0,1,0,1])
+axis([0,1,0,max(max(u))])
 ax=gca;
 ax.XTickLabel={};
 ax.YTickLabel={};
-saveas(gcf,'ExA_p.pdf')
+saveas(gcf,'ExA_2_p.pdf')
