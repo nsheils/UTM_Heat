@@ -251,6 +251,8 @@ u0hat{1}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),0,xj(1));
 for j=2:n+1
    u0hat{j}= @(k) integral(@(x) exp(-1i.*k.*x).*u0(x),xj(j-1),xj(j));
 end
+%someimes these are NaN--we fix that in the evaluation of X.
+warning('off','MATLAB:integral:NonFiniteValue')
 
 Y=cell(2*n+4,length(tspan));
 Y(:)={0};
